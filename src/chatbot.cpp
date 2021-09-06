@@ -15,9 +15,11 @@ ChatBot::ChatBot()
     _image = nullptr;
     _chatLogic = nullptr;
     _rootNode = nullptr;
+    _currentNode = nullptr;
 }
 
 // constructor WITH memory allocation
+// where filename is the filename of the image
 ChatBot::ChatBot(std::string filename)
 {
     std::cout << "ChatBot Constructor" << std::endl;
@@ -28,8 +30,10 @@ ChatBot::ChatBot(std::string filename)
 
     // load image into heap memory
     _image = new wxBitmap(filename, wxBITMAP_TYPE_PNG);
+    _currentNode = nullptr;
 }
 
+// dtor
 ChatBot::~ChatBot()
 {
     std::cout << "ChatBot Destructor" << std::endl;
@@ -42,25 +46,76 @@ ChatBot::~ChatBot()
     }
 }
 
-//// STUDENT CODE
-////
+// copy ctor
+ChatBot::ChatBot(const ChatBot& source) {
+    std::cout << "ChatBot Copy Constructor" << std::endl;
+    // copy ptrs and create a new image from the source
+    _chatLogic = source._chatLogic;
+    _rootNode = source._rootNode;
+    _currentNode = source._currentNode;
+    _image = new wxBitmap(*source._image);
+}
 
-////
-//// EOF STUDENT CODE
+// copy assignment operator
+ChatBot& ChatBot::operator=(const ChatBot& source) {
+    std::cout << "ChatBot Copy Assignment Operator" << std::endl;
+    // copy ptrs and create a new image from the source
+    _chatLogic = source._chatLogic;
+    _rootNode = source._rootNode;
+    _currentNode = source._currentNode;
+    _image = new wxBitmap(*source._image);
+    return *this;
+}
+
+// move ctor
+ChatBot::ChatBot(ChatBot&& source) {
+    std::cout << "ChatBot Move Constructor \n";
+    // move ptrs
+    _chatLogic = source._chatLogic;
+    _rootNode = source._rootNode;
+    _currentNode = source._currentNode;
+    _image = source._image;
+
+    // invalidate
+    source._image = nullptr;
+    source._currentNode = nullptr;
+    source._rootNode = nullptr;
+    source._chatLogic = nullptr;
+}
+
+// move assignment operator
+ChatBot& ChatBot::operator=(ChatBot&& source) {
+    std::cout << "ChatBot Move Assignment Operator \n";
+    if (this == &source)
+        return *this;
+
+    // move ptrs
+    _chatLogic = source._chatLogic;
+    _rootNode = source._rootNode;
+    _currentNode = source._currentNode;
+    _image = source._image;
+
+    // invalidate
+    source._image = nullptr;
+    source._currentNode = nullptr;
+    source._rootNode = nullptr;
+    source._chatLogic = nullptr;
+    return *this;
+}
 
 void ChatBot::ReceiveMessageFromUser(std::string message)
 {
     // loop over all edges and keywords and compute Levenshtein distance to query
-    typedef std::pair<GraphEdge *, int> EdgeDist;
+    typedef std::pair<std::unique_ptr<GraphEdge> , int> EdgeDist;
     std::vector<EdgeDist> levDists; // format is <ptr,levDist>
 
     for (size_t i = 0; i < _currentNode->GetNumberOfChildEdges(); ++i)
     {
-        GraphEdge *edge = _currentNode->GetChildEdgeAtIndex(i);
+        std::unique_ptr<GraphEdge>& edge = _currentNode->GetChildEdgeAtIndex(i);
         for (auto keyword : edge->GetKeywords())
         {
-            EdgeDist ed{edge, ComputeLevenshteinDistance(keyword, message)};
-            levDists.push_back(ed);
+            EdgeDist ed{std::move(edge), ComputeLevenshteinDistance(keyword, message)};
+            levDists.emplace_back(std::move(ed));
         }
     }
 
@@ -92,6 +147,9 @@ void ChatBot::SetCurrentNode(GraphNode *node)
     std::mt19937 generator(int(std::time(0)));
     std::uniform_int_distribution<int> dis(0, answers.size() - 1);
     std::string answer = answers.at(dis(generator));
+
+    // move chatBot from the current node
+    _chatLogic->SetChatbotHandle(std::move(node->getChatBotHandle()));
 
     // send selected node answer to user
     _chatLogic->SendMessageToUser(answer);
