@@ -18,7 +18,7 @@ ChatLogic::ChatLogic()
     ////
 
     // create instance of chatbot
-    _chatBot = new ChatBot("../images/chatbot.png");
+    // _chatBot = new ChatBot("../images/chatbot.png");
 
     // add pointer to chatlogic so that chatbot answers can be passed on to the GUI
     // _chatBot->SetChatLogicHandle(this);
@@ -40,12 +40,11 @@ ChatLogic::~ChatLogic()
 //    }
 
     // delete all edges
-    if (!_edges.empty())
-        for (auto it = std::begin(_edges); it != std::end(_edges); ++it) {
-            delete *it;
-        }
+//    if (!_edges.empty())
+//        for (auto it = std::begin(_edges); it != std::end(_edges); ++it) {
+//            delete *it;
+//        }
 
-//    std::cout << "ChatLogic Destructor Done." << std::endl;
 }
 
 template <typename T>
@@ -212,11 +211,15 @@ void ChatLogic::LoadAnswerGraphFromFile(std::string filename)
             }
         }
     }
-
-    _chatBot->SetChatLogicHandle(this);
-    // add chatbot to graph root node
-    _chatBot->SetRootNode(rootNode);
-    rootNode->MoveChatbotHere(std::move(_chatBot));
+    // create a stack var
+    ChatBot ChatBotOnStack("../images/chatbot.png");
+    _chatBot = &ChatBotOnStack;
+    // set chat logic here rather than in the ctor
+    ChatBotOnStack.SetChatLogicHandle(this);
+    // set root node here
+    ChatBotOnStack.SetRootNode(rootNode);
+    // and move the chatbot to the root node, where we can set it as current
+    rootNode->MoveChatbotHere(ChatBotOnStack);
     ////
     //// EOF STUDENT CODE
 }
@@ -239,7 +242,7 @@ void ChatLogic::SendMessageToChatbot(std::string message)
 void ChatLogic::SendMessageToUser(std::string message)
 {
     _panelDialog->PrintChatbotResponse(message);
-    // _currentNode->setChatBotHandle(std::move(_chatBot));
+    // _currentNode->setChatBotHandle(*_chatBot);
 }
 
 wxBitmap *ChatLogic::GetImageFromChatbot()
